@@ -269,7 +269,7 @@ def create_dashboard_html(locations_data, total_users, countries, time_ranges):
     dashboard_html = f"""
     <div class="dashboard-container">
         <div class="controls-panel">
-            <h2>Location Analysis</h2>
+            <!-- <h2>Location Analysis</h2> -->
             
             <div class="stats-grid">
                 <div class="stat-card">
@@ -679,7 +679,7 @@ def create_dashboard_js(locations_data):
                 countryBreakdown[loc.country] = (countryBreakdown[loc.country] || 0) + 1;
             }});
             
-            let html = `<h3>📊 Filtered Results: ${{count}} users</h3>`;
+            let html = `<h3>Filtered Results: ${{count}} users</h3>`;
             
             if (Object.keys(countryBreakdown).length > 0) {{
                 html += '<div class="country-breakdown">';
@@ -780,15 +780,7 @@ def main():
         position: relative;
     }}
     
-    .controls-panel::before {{
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
-    }}
+
     
     /* Map Container */
     .map-container {{ 
@@ -811,8 +803,8 @@ def main():
     .map-header h3 {{ 
         margin: 0; 
         color: #1e293b; 
-        font-weight: 600; 
-        font-size: 16px;
+        font-weight: 700; 
+        font-size: 20px;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -845,16 +837,7 @@ def main():
         position: relative;
     }}
     
-    h2::after {{
-        content: '';
-        position: absolute;
-        bottom: -6px;
-        left: 20px;
-        width: 50px;
-        height: 2px;
-        background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
-        border-radius: 1px;
-    }}
+
     
     h3 {{ 
         color: #374151; 
@@ -871,7 +854,7 @@ def main():
         display: grid; 
         grid-template-columns: 1fr 1fr; 
         gap: 12px; 
-        margin: 0 20px 20px 20px;
+        margin: 20px 20px 20px 20px;
     }}
     
     .stat-card {{ 
