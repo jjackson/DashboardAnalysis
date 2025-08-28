@@ -7,3 +7,9 @@ openpyxl>=3.1.0
 pytest>=8.0.0
 geopy>=2.4.0
 
+# Geospatial packages for ward-level GPS analysis
+geopandas>=0.14.0
+shapely>=2.0.0
+rtree>=1.0.0
+pyproj>=3.4.0
+

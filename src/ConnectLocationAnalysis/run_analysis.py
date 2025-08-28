@@ -13,7 +13,7 @@ import time
 
 def load_data(cached_only=False):
     """Load GPS location data from CSV"""
-    df = pd.read_csv('data/sqllab_untitled_query_1_20250827T204505.csv')
+    df = pd.read_csv('data/sqllab_untitled_query_1_20250828T124348.csv')
     
     if cached_only:
         print(f"📊 Loading full dataset: {len(df)} rows")
@@ -91,6 +91,7 @@ def add_geographic_boundaries_from_cache(df):
     df['country'] = 'Unknown'
     df['state_province'] = 'Unknown' 
     df['local_admin'] = 'Unknown'
+    df['ward'] = 'Unknown'
     
     cache_hits = 0
     
@@ -108,6 +109,7 @@ def add_geographic_boundaries_from_cache(df):
             df.at[idx, 'country'] = cached['country']
             df.at[idx, 'state_province'] = cached['state_province']
             df.at[idx, 'local_admin'] = cached['local_admin']
+            df.at[idx, 'ward'] = cached.get('ward', 'Unknown')  # Ward data only available for some locations
             cache_hits += 1
     
     print(f"✅ Cache-only processing complete!")
@@ -127,6 +129,7 @@ def add_geographic_boundaries(df):
     df['country'] = 'Unknown'
     df['state_province'] = 'Unknown' 
     df['local_admin'] = 'Unknown'
+    df['ward'] = 'Unknown'
     
     # Track stats
     cache_hits = 0
@@ -156,6 +159,7 @@ def add_geographic_boundaries(df):
             df.at[idx, 'country'] = cached['country']
             df.at[idx, 'state_province'] = cached['state_province']
             df.at[idx, 'local_admin'] = cached['local_admin']
+            df.at[idx, 'ward'] = cached.get('ward', 'Unknown')  # Ward data only available for some locations
             cache_hits += 1
             if idx % 100 == 0 or idx < 20:
                 print(f"      💾 Cache hit: {cached['country']}, {cached['state_province']}, {cached['local_admin']}")
@@ -241,6 +245,7 @@ def create_charts(df):
             'country': str(row['country']) if pd.notna(row['country']) else 'Unknown',
             'state_province': str(row['state_province']) if pd.notna(row['state_province']) else 'Unknown',
             'local_admin': str(row['local_admin']) if pd.notna(row['local_admin']) else 'Unknown',
+            'ward': str(row['ward']) if pd.notna(row['ward']) else 'Unknown',
             'accuracy': float(row['accuracy_in_m'])
         })
     
@@ -304,6 +309,9 @@ def create_dashboard_html(locations_data, total_users, countries, time_ranges):
                     </select>
                     <select id="localFilter" onchange="filterByLocal()" disabled>
                         <option value="">Select City/Local...</option>
+                    </select>
+                    <select id="wardFilter" onchange="filterByWard()" disabled>
+                        <option value="">Select Ward (if available)...</option>
                     </select>
                 </div>
             </div>
@@ -404,6 +412,7 @@ def create_dashboard_js(locations_data):
             const currentCountry = activeFilters.country;
             const currentState = activeFilters.state;
             const currentLocal = activeFilters.local;
+            const currentWard = activeFilters.ward;
             
             // Repopulate country filter with updated counts
             populateCountryFilter();
@@ -441,30 +450,54 @@ def create_dashboard_js(locations_data):
                                     // Local still exists, restore it
                                     localSelect.value = currentLocal;
                                     activeFilters.local = currentLocal;
+                                    
+                                    // Repopulate ward filter
+                                    populateWardFilter(currentCountry, currentState, currentLocal);
+                                    
+                                    if (currentWard) {{
+                                        const wardSelect = document.getElementById('wardFilter');
+                                        const wardOption = Array.from(wardSelect.options).find(opt => opt.value === currentWard);
+                                        
+                                        if (wardOption) {{
+                                            // Ward still exists, restore it
+                                            wardSelect.value = currentWard;
+                                            activeFilters.ward = currentWard;
+                                        }} else {{
+                                            // Ward no longer exists, clear it
+                                            delete activeFilters.ward;
+                                        }}
+                                    }}
                                 }} else {{
-                                    // Local no longer exists, clear it
+                                    // Local no longer exists, clear it and ward
                                     delete activeFilters.local;
+                                    delete activeFilters.ward;
                                 }}
                             }}
                         }} else {{
-                            // State no longer exists, clear state and local
+                            // State no longer exists, clear state, local, and ward
                             document.getElementById('stateFilter').innerHTML = '<option value="">Select State/Province...</option>';
                             document.getElementById('localFilter').innerHTML = '<option value="">Select City/Local...</option>';
+                            document.getElementById('wardFilter').innerHTML = '<option value="">Select Ward (if available)...</option>';
                             document.getElementById('stateFilter').disabled = true;
                             document.getElementById('localFilter').disabled = true;
+                            document.getElementById('wardFilter').disabled = true;
                             delete activeFilters.state;
                             delete activeFilters.local;
+                            delete activeFilters.ward;
                         }}
                     }}
                 }} else {{
                     // Country no longer exists, clear all geographic filters
                     document.getElementById('stateFilter').innerHTML = '<option value="">Select State/Province...</option>';
                     document.getElementById('localFilter').innerHTML = '<option value="">Select City/Local...</option>';
+                    document.getElementById('wardFilter').innerHTML = '<option value="">Select Ward (if available)...</option>';
                     document.getElementById('stateFilter').disabled = true;
                     document.getElementById('localFilter').disabled = true;
+                    document.getElementById('wardFilter').disabled = true;
                     delete activeFilters.country;
                     delete activeFilters.state;
                     delete activeFilters.local;
+                    delete activeFilters.ward;
                 }}
             }}
             
@@ -476,9 +509,9 @@ def create_dashboard_js(locations_data):
             const stateSelect = document.getElementById('stateFilter');
             stateSelect.innerHTML = '<option value="">Select State/Province...</option>';
             
-            // Populate state dropdown based on current filtered data
+            // Populate state dropdown based on ALL locations for this country
             const states = [...new Set(
-                filteredLocations
+                allLocations
                     .filter(loc => loc.country === country)
                     .map(loc => loc.state_province)
             )].sort();
@@ -487,7 +520,7 @@ def create_dashboard_js(locations_data):
                 if (state !== 'Unknown') {{
                     const option = document.createElement('option');
                     option.value = state;
-                    const count = filteredLocations.filter(l => l.country === country && l.state_province === state).length;
+                    const count = allLocations.filter(l => l.country === country && l.state_province === state).length;
                     option.textContent = `${{state}} (${{count}})`;
                     stateSelect.appendChild(option);
                 }}
@@ -500,9 +533,9 @@ def create_dashboard_js(locations_data):
             const localSelect = document.getElementById('localFilter');
             localSelect.innerHTML = '<option value="">Select City/Local...</option>';
             
-            // Populate local dropdown based on current filtered data
+            // Populate local dropdown based on ALL locations for this country/state
             const locals = [...new Set(
-                filteredLocations
+                allLocations
                     .filter(loc => loc.country === country && loc.state_province === state)
                     .map(loc => loc.local_admin)
             )].sort();
@@ -511,7 +544,7 @@ def create_dashboard_js(locations_data):
                 if (local !== 'Unknown') {{
                     const option = document.createElement('option');
                     option.value = local;
-                    const count = filteredLocations.filter(l => 
+                    const count = allLocations.filter(l => 
                         l.country === country && 
                         l.state_province === state && 
                         l.local_admin === local
@@ -528,12 +561,15 @@ def create_dashboard_js(locations_data):
             const country = document.getElementById('countryFilter').value;
             const stateSelect = document.getElementById('stateFilter');
             const localSelect = document.getElementById('localFilter');
+            const wardSelect = document.getElementById('wardFilter');
             
             // Reset dependent filters
             stateSelect.innerHTML = '<option value="">Select State/Province...</option>';
             localSelect.innerHTML = '<option value="">Select City/Local...</option>';
+            wardSelect.innerHTML = '<option value="">Select Ward (if available)...</option>';
             stateSelect.disabled = !country;
             localSelect.disabled = true;
+            wardSelect.disabled = true;
             
             if (country) {{
                 activeFilters.country = country;
@@ -542,6 +578,7 @@ def create_dashboard_js(locations_data):
                 delete activeFilters.country;
                 delete activeFilters.state;
                 delete activeFilters.local;
+                delete activeFilters.ward;
             }}
             
             applyFilters();
@@ -550,28 +587,91 @@ def create_dashboard_js(locations_data):
         function filterByState() {{
             const state = document.getElementById('stateFilter').value;
             const localSelect = document.getElementById('localFilter');
+            const wardSelect = document.getElementById('wardFilter');
             
+            // Clear local and ward filters when state changes
             localSelect.innerHTML = '<option value="">Select City/Local...</option>';
+            wardSelect.innerHTML = '<option value="">Select Ward (if available)...</option>';
+            wardSelect.disabled = true;
+            
+            // Clear active filters for local and ward
+            delete activeFilters.local;
+            delete activeFilters.ward;
             
             if (state) {{
                 activeFilters.state = state;
+                // Populate local filter for the new state
                 populateLocalFilter(activeFilters.country, state);
+                // Apply filters after populating local options
+                applyFilters();
             }} else {{
                 delete activeFilters.state;
-                delete activeFilters.local;
                 localSelect.disabled = true;
+                applyFilters();
+            }}
+        }}
+        
+        function filterByLocal() {{
+            const local = document.getElementById('localFilter').value;
+            const wardSelect = document.getElementById('wardFilter');
+            
+            // Clear ward filter when local changes
+            wardSelect.innerHTML = '<option value="">Select Ward (if available)...</option>';
+            wardSelect.disabled = true;
+            delete activeFilters.ward;
+            
+            if (local) {{
+                activeFilters.local = local;
+                populateWardFilter(activeFilters.country, activeFilters.state, local);
+            }} else {{
+                delete activeFilters.local;
             }}
             
             applyFilters();
         }}
         
-        function filterByLocal() {{
-            const local = document.getElementById('localFilter').value;
+        function populateWardFilter(country, state, local) {{
+            const wardSelect = document.getElementById('wardFilter');
+            wardSelect.innerHTML = '<option value="">Select Ward (if available)...</option>';
             
-            if (local) {{
-                activeFilters.local = local;
+            // Only show wards for Nigerian locations
+            if (country !== 'Nigeria') {{
+                wardSelect.disabled = true;
+                return;
+            }}
+            
+            const wards = [...new Set(
+                allLocations
+                    .filter(loc => loc.country === country && 
+                                 loc.state_province === state && 
+                                 loc.local_admin === local &&
+                                 loc.ward !== 'Unknown')
+                    .map(loc => loc.ward)
+            )].sort();
+            
+            wards.forEach(ward => {{
+                const option = document.createElement('option');
+                option.value = ward;
+                const count = allLocations.filter(l => 
+                    l.country === country && 
+                    l.state_province === state && 
+                    l.local_admin === local &&
+                    l.ward === ward
+                ).length;
+                option.textContent = `${{ward}} (${{count}})`;
+                wardSelect.appendChild(option);
+            }});
+            
+            wardSelect.disabled = wards.length === 0;
+        }}
+        
+        function filterByWard() {{
+            const ward = document.getElementById('wardFilter').value;
+            
+            if (ward) {{
+                activeFilters.ward = ward;
             }} else {{
-                delete activeFilters.local;
+                delete activeFilters.ward;
             }}
             
             applyFilters();
@@ -589,6 +689,7 @@ def create_dashboard_js(locations_data):
                 if (activeFilters.country && location.country !== activeFilters.country) return false;
                 if (activeFilters.state && location.state_province !== activeFilters.state) return false;
                 if (activeFilters.local && location.local_admin !== activeFilters.local) return false;
+                if (activeFilters.ward && location.ward !== activeFilters.ward) return false;
                 
                 return true;
             }});
@@ -646,12 +747,17 @@ def create_dashboard_js(locations_data):
             
             // Add markers
             filteredLocations.forEach(location => {{
+                let locationText = `${{location.local_admin}}, ${{location.state_province}}, ${{location.country}}`;
+                if (location.ward !== 'Unknown' && location.country === 'Nigeria') {{
+                    locationText = `${{location.ward}} Ward, ` + locationText;
+                }}
+                
                 const marker = L.marker([location.lat, location.lng])
                     .bindPopup(`
                         <strong>User ID:</strong> ${{location.flw_id}}<br>
                         <strong>Opportunity:</strong> ${{location.opp_name}}<br>
                         <strong>Last Visit:</strong> ${{location.date}}<br>
-                        <strong>Location:</strong> ${{location.local_admin}}, ${{location.state_province}}, ${{location.country}}<br>
+                        <strong>Location:</strong> ${{locationText}}<br>
                         <strong>Accuracy:</strong> ${{location.accuracy}}m
                     `);
                 markersLayer.addLayer(marker);
@@ -702,6 +808,7 @@ def create_dashboard_js(locations_data):
             if (activeFilters.country) filters.push(`Country: ${{activeFilters.country}}`);
             if (activeFilters.state) filters.push(`State: ${{activeFilters.state}}`);
             if (activeFilters.local) filters.push(`Local: ${{activeFilters.local}}`);
+            if (activeFilters.ward) filters.push(`Ward: ${{activeFilters.ward}}`);
             
             if (filters.length > 0) {{
                 container.innerHTML = '<strong>Active Filters:</strong><br>' + filters.join('<br>');
@@ -716,8 +823,10 @@ def create_dashboard_js(locations_data):
             document.getElementById('countryFilter').value = '';
             document.getElementById('stateFilter').innerHTML = '<option value="">Select State/Province...</option>';
             document.getElementById('localFilter').innerHTML = '<option value="">Select City/Local...</option>';
+            document.getElementById('wardFilter').innerHTML = '<option value="">Select Ward (if available)...</option>';
             document.getElementById('stateFilter').disabled = true;
             document.getElementById('localFilter').disabled = true;
+            document.getElementById('wardFilter').disabled = true;
             
             filteredLocations = [...allLocations];
             updateMap();
