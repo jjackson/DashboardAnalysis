@@ -15,4 +15,4 @@ This repo serves as BOTH the template AND the workspace for creating multiple on
 - Generate clean, modern HTML
 
 ## Utils
-- Utils folder is contains methods that may be common across dashboard use-cases
+- Common code for superset data downloading
