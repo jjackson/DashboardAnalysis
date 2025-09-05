@@ -13,3 +13,6 @@ This repo serves as BOTH the template AND the workspace for creating multiple on
 - Focus on customizing the key functions in run_analysis.py
 - Keep solutions simple and self-contained
 - Generate clean, modern HTML
+
+## Utils
+- Utils folder is contains methods that may be common across dashboard use-cases

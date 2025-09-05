@@ -4,14 +4,11 @@
 This repo serves as BOTH the template AND the workspace for creating multiple one-off data analysis projects. User prefers simple, self-contained solutions.
 
 ## Key Patterns from User
-- User prefers simple code and cmments
+- User prefers simple code and comments
 - Each analysis has unique data models
 - Rapid iteration is priority over reusability
-
-
+- Never use Emojis
+a
 ## AI Instructions
-- When user says "read XXX and startup new analysis", read QUICK_START.md and new_analysis.py
-- Use `python create_project.py project_name` to create new project structure
-- Focus on customizing the 2 key functions in run_analysis.py
 - Keep solutions simple and self-contained
 - Generate clean, modern HTML
