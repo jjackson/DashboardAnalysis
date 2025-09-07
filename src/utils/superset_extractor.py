@@ -108,7 +108,7 @@ class SupersetExtractor:
         print("✅ Authentication successful")
         return True
     
-    def execute_query(self, sql_query: str, verbose: bool = False, output_file: str = None) -> Optional[pd.DataFrame]:
+    def execute_query(self, sql_query: str, verbose: bool = False, output_file: str = None, resume: bool = True) -> Optional[pd.DataFrame]:
         """Execute a SQL query with pagination and return results as DataFrame."""
         if not self.session or not self.access_token:
             if not self.authenticate():
@@ -120,6 +120,19 @@ class SupersetExtractor:
         total_rows = 0
         chunk_num = 1
         
+        # Check if resuming from existing file
+        if output_file and resume and os.path.exists(output_file):
+            # Count existing rows to determine offset
+            with open(output_file, 'r', encoding='utf-8') as f:
+                total_lines = sum(1 for _ in f)
+                existing_rows = total_lines - 1  # Subtract header row
+            offset = existing_rows
+            total_rows = existing_rows
+            chunk_num = (existing_rows // self.chunk_size) + 1
+            print(f"📄 Found {total_lines:,} lines in file ({existing_rows:,} data rows + 1 header)")
+            print(f"🔄 Resuming from row {existing_rows:,} (chunk {chunk_num})")
+            print(f"📍 Starting offset: {offset:,}, chunk size: {self.chunk_size:,}")
+        
         # For memory efficiency with large datasets
         if output_file:
             import tempfile
@@ -129,6 +142,8 @@ class SupersetExtractor:
             # Add OFFSET and LIMIT to the SQL (ensure proper formatting)
             clean_query = sql_query.strip().rstrip(';')
             paginated_sql = f"{clean_query}\nOFFSET {offset}\nLIMIT {self.chunk_size}"
+            
+            print(f"🔍 SQL: OFFSET {offset:,} LIMIT {self.chunk_size:,}")
             
             payload = {
                 "ctas_method": "TABLE",
@@ -165,17 +180,18 @@ class SupersetExtractor:
             
             chunk_rows = len(chunk_data)
             total_rows += chunk_rows
+            current_offset = offset  # Capture offset used for this chunk
             
-            print(f"📦 Chunk {chunk_num}: {chunk_rows:,} rows (total: {total_rows:,})")
+            print(f"📦 Chunk {chunk_num}: {chunk_rows:,} rows (total: {total_rows:,}) [used offset {current_offset:,}]")
             
             # Write chunk to disk immediately for memory efficiency
             if output_file:
                 chunk_df = pd.DataFrame(chunk_data, columns=[col['name'] for col in all_columns])
-                if chunk_num == 1:
-                    # First chunk - create file with headers
+                if chunk_num == 1 and not (resume and os.path.exists(output_file)):
+                    # First chunk - create file with headers (only if not resuming)
                     chunk_df.to_csv(output_file, index=False, mode='w')
                 else:
-                    # Subsequent chunks - append without headers
+                    # Subsequent chunks or resuming - append without headers
                     chunk_df.to_csv(output_file, index=False, mode='a', header=False)
                 print(f"💾 Written to {output_file}")
             else:

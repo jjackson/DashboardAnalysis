@@ -9,15 +9,11 @@ SQL_FAKE_DATA_PARTY = """
 SELECT
    opportunity_uservisit.opportunity_id AS opportunity_id,
    opportunity_uservisit.user_id AS flw_id,
-   users_user.name AS flw_name,
-   opportunity_uservisit.visit_date,
    form_json
    
 FROM opportunity_uservisit
 LEFT JOIN opportunity_opportunity
  ON opportunity_opportunity.id = opportunity_uservisit.opportunity_id
-LEFT JOIN users_user
- ON opportunity_uservisit.user_id = users_user.id
 WHERE opportunity_opportunity.id IN (716,715);
 """
 
