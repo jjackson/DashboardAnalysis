@@ -9,30 +9,42 @@ GPS location analysis dashboard with Nigerian ward-level granularity.
    pip install -r ../../requirements.txt
    ```
 
-2. **Download GRID3 boundary files:**
+2. **Configure Superset access:**
+   - Ensure your `.env` file has Superset credentials:
+     ```
+     SUPERSET_URL=your_superset_url
+     SUPERSET_USERNAME=your_username
+     SUPERSET_PASSWORD=your_password
+     ```
+
+3. **Download GRID3 boundary files (one-time setup):**
    - Go to https://grid3.org/geospatial-data-nigeria
    - Download these 3 GeoJSON files to `data/shapefiles/`:
      - Ward boundaries
      - LGA boundaries  
      - State boundaries
 
-3. **Run analysis:**
+4. **Run analysis with fresh data:**
    ```bash
-   python run_analysis.py
+   python run_analysis.py --fetch-fresh
    ```
 
-4. **Update cache with ward data:**
+5. **Update cache with ward data:**
    ```bash
    python update_cache.py
    ```
 
+### Alternative: Use existing data
+
+```bash
+python run_analysis.py
+```
+
 ## Scripts
 
-- **`run_analysis.py`** - Main dashboard generator. Creates timestamped HTML output with interactive maps and filtering. Will 
-create JSON cache as it resolves locations for GPS and attemp to retreive cache before making API call to OSM.
+- **`run_analysis.py`** - Main dashboard generator. Creates timestamped HTML output with interactive maps and filtering. Automatically uses the most recent data file and supports `--fetch-fresh` flag to download fresh data from Superset.
 
-- **`update_cache.py`** - Cache updater specific to Nigera. Adds Nigerian ward data to existing geocoding cache using GRID3 boundaries.  Also overwrites LGA if it disagrees with OSM's original
-answer.
+- **`update_cache.py`** - Cache updater specific to Nigeria. Adds Nigerian ward data to existing geocoding cache using GRID3 boundaries. Also overwrites LGA if it disagrees with OSM's original answer.
 
 ## Data Structure
 

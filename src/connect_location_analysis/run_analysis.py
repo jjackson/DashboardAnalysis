@@ -10,10 +10,57 @@ from pathlib import Path
 from geopy.geocoders import Nominatim
 from collections import defaultdict
 import time
+import glob
 
-def load_data(cached_only=False):
+def find_latest_data_file():
+    """Find the most recent connect location analysis data file"""
+    data_dir = Path('data')
+    
+    # Look for connect_location_analysis files first
+    connect_files = list(data_dir.glob('connect_location_analysis_*.csv'))
+    if connect_files:
+        # Sort by modification time, newest first
+        latest_file = max(connect_files, key=lambda x: x.stat().st_mtime)
+        print(f"Using latest connect location data: {latest_file.name}")
+        return latest_file
+    
+    # Fallback to old sqllab files
+    sqllab_files = list(data_dir.glob('sqllab_untitled_query_*.csv'))
+    if sqllab_files:
+        latest_file = max(sqllab_files, key=lambda x: x.stat().st_mtime)
+        print(f"Using fallback data file: {latest_file.name}")
+        return latest_file
+    
+    # No data files found
+    print("No data files found in data/ directory")
+    print("Run with --fetch-fresh to download fresh data from Superset")
+    return None
+
+def load_data(cached_only=False, fetch_fresh=False):
     """Load GPS location data from CSV"""
-    df = pd.read_csv('data/sqllab_untitled_query_1_20250828T124348.csv')
+    
+    # Fetch fresh data if requested
+    if fetch_fresh:
+        print("Fetching fresh data from Superset...")
+        import sys
+        sys.path.append(str(Path(__file__).parent.parent / 'utils'))
+        from superset_extractor import SupersetExtractor
+        from sql_queries import SQL_CONNECT_LOCATION_ANALYSIS
+        
+        extractor = SupersetExtractor()
+        extractor.authenticate()
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"connect_location_analysis_{timestamp}"
+        extractor.export_query_to_csv(SQL_CONNECT_LOCATION_ANALYSIS, output_filename, verbose=True)
+        extractor.close()
+    
+    # Find the latest data file
+    data_file = find_latest_data_file()
+    if data_file is None:
+        raise FileNotFoundError("No data files found. Run with --fetch-fresh first.")
+    
+    df = pd.read_csv(data_file)
     
     if cached_only:
         print(f"📊 Loading full dataset: {len(df)} rows")
@@ -845,9 +892,11 @@ def main():
     parser = argparse.ArgumentParser(description='Connect Location Analysis Dashboard')
     parser.add_argument('--cached-only', action='store_true', 
                        help='Only use locations that have cached geocoding data (no API calls)')
+    parser.add_argument('--fetch-fresh', action='store_true',
+                       help='Fetch fresh data from Superset before running analysis')
     args = parser.parse_args()
     
-    df = load_data(cached_only=args.cached_only)
+    df = load_data(cached_only=args.cached_only, fetch_fresh=args.fetch_fresh)
     charts = create_charts(df)
     
     # Generate HTML with modern Tailwind-inspired styling
