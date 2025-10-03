@@ -9,47 +9,59 @@ GPS location analysis dashboard with Nigerian ward-level granularity.
    pip install -r ../../requirements.txt
    ```
 
-2. **Configure Superset access:**
-   - Ensure your `.env` file has Superset credentials:
-     ```
-     SUPERSET_URL=your_superset_url
-     SUPERSET_USERNAME=your_username
-     SUPERSET_PASSWORD=your_password
-     ```
+2. **Configure Superset (in root `.env` file):**
+   ```
+   SUPERSET_URL=your_superset_url
+   SUPERSET_USERNAME=your_username
+   SUPERSET_PASSWORD=your_password
+   ```
 
 3. **Download GRID3 boundary files (one-time setup):**
    - Go to https://grid3.org/geospatial-data-nigeria
-   - Download these 3 GeoJSON files to `data/shapefiles/`:
+   - Download these GeoJSON files to `data/shapefiles/`:
      - Ward boundaries
-     - LGA boundaries  
-     - State boundaries
+     - LGA boundaries
 
-4. **Run analysis with fresh data:**
+4. **Run analysis:**
    ```bash
    python run_analysis.py --fetch-fresh
    ```
 
-5. **Update cache with ward data:**
-   ```bash
-   python update_cache.py
-   ```
+That's it! Dashboard auto-opens in your browser.
 
-### Alternative: Use existing data
+## Usage
 
+**Fetch fresh data and create dashboard:**
+```bash
+python run_analysis.py --fetch-fresh
+```
+
+**Use cached data (no Superset call):**
 ```bash
 python run_analysis.py
 ```
 
-## Scripts
+**Use only locations with existing geocode cache (no OSM API calls):**
+```bash
+python run_analysis.py --cached-only
+```
 
-- **`run_analysis.py`** - Main dashboard generator. Creates timestamped HTML output with interactive maps and filtering. Automatically uses the most recent data file and supports `--fetch-fresh` flag to download fresh data from Superset.
+## How It Works
 
-- **`update_cache.py`** - Cache updater specific to Nigeria. Adds Nigerian ward data to existing geocoding cache using GRID3 boundaries. Also overwrites LGA if it disagrees with OSM's original answer.
+1. Pulls GPS location data from Superset
+2. Reverse geocodes coordinates to country/state/LGA using OpenStreetMap
+3. Adds Nigerian ward data using GRID3 boundaries
+4. Creates interactive dashboard with filtering by location hierarchy
+5. All geocoding results are cached for fast subsequent runs
 
 ## Data Structure
 
-- `data/cache/` - Geocoding cache (automatically managed)
-- `data/shapefiles/` - GRID3 boundary files (manual download required)
-- `output/` - Generated HTML dashboards
+- `data/cache/` - Geocoding cache (auto-managed)
+- `data/shapefiles/` - GRID3 boundary files (manual download)
+- `data/` - CSV data files from Superset
+- `output/` - Generated HTML dashboards (timestamped)
 
-Dashboard auto-opens in browser with ward-level analysis for Nigerian locations.
+## Scripts
+
+- **`run_analysis.py`** - Main script. Fetches data from Superset, geocodes locations, adds ward data, and generates dashboard.
+- **`update_cache.py`** - Manual utility to add GRID3 ward data to existing cache (normally called automatically by run_analysis.py).

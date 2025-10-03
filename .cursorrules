@@ -12,3 +12,9 @@ a
 ## AI Instructions
 - Keep solutions simple and self-contained
 - Generate clean, modern HTML
+
+## Terminal & Environment (Workaround for Cursor Update)
+- ALWAYS activate the virtual environment before running Python commands
+- Virtual environment is located at: ./venv
+- On Windows Git Bash, use: source venv/Scripts/activate
+- Verify Python path points to venv before executing scripts

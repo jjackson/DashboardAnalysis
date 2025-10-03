@@ -897,6 +897,17 @@ def main():
     args = parser.parse_args()
     
     df = load_data(cached_only=args.cached_only, fetch_fresh=args.fetch_fresh)
+    
+    # Update cache with GRID3 ward data for Nigerian coordinates
+    # (Only creates backup if not in cached-only mode)
+    if not args.cached_only:
+        try:
+            from update_cache import update_cache_from_grid3
+            update_cache_from_grid3(create_backup=False, verbose=True)
+        except Exception as e:
+            print(f"⚠️ Warning: Could not update GRID3 ward data: {e}")
+            print("   Dashboard will still work, but Nigerian wards may be missing")
+    
     charts = create_charts(df)
     
     # Generate HTML with modern Tailwind-inspired styling
